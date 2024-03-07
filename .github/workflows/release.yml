@@ -1,0 +1,132 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/*.yml"
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+    paths:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/*.yml"
+  release:
+    types: [ published ]
+
+jobs:
+
+  build:
+    strategy:
+      matrix:
+        build-tag: [ 'none' ]
+        goos: [ linux ]
+        goarch: [ amd64 ]
+        goamd64: [ v1, v3 ]
+        include:
+          - build-tag: none
+            goos: linux
+            goarch: arm64
+          - build-tag: none
+            goos: linux
+            goarch: riscv64
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+    env:
+      BUILD_TAG: ${{ matrix.build-tag }}
+      GOOS: ${{ matrix.goos }}
+      GOARCH: ${{ matrix.goarch }}
+      GOAMD64: ${{ matrix.goamd64 }}
+      CGO_ENABLED: 0
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v4
+
+      - name: Configure & show workflow information
+        id: get_filename
+        run: |
+          echo "BUILD_TAG: $BUILD_TAG, GOOS: $GOOS, GOARCH: $GOARCH, GOAMD64: $GOAMD64"
+          if [ "$GOAMD64" == "v3" ]; then
+            if [ "$BUILD_TAG" == "none" ]; then
+              echo "ASSET_NAME=$GOOS-$GOARCH$GOAMD64" >> $GITHUB_OUTPUT
+              echo "ASSET_NAME=$GOOS-$GOARCH$GOAMD64" >> $GITHUB_ENV
+            else
+              echo "ASSET_NAME=$GOOS-$GOARCH$GOAMD64-$BUILD_TAG" >> $GITHUB_OUTPUT
+              echo "ASSET_NAME=$GOOS-$GOARCH$GOAMD64-$BUILD_TAG" >> $GITHUB_ENV
+            fi
+          else
+            if [ "$BUILD_TAG" == "none" ]; then
+              echo "ASSET_NAME=$GOOS-$GOARCH" >> $GITHUB_OUTPUT
+              echo "ASSET_NAME=$GOOS-$GOARCH" >> $GITHUB_ENV
+            else
+              echo "ASSET_NAME=$GOOS-$GOARCH-$BUILD_TAG" >> $GITHUB_OUTPUT
+              echo "ASSET_NAME=$GOOS-$GOARCH-$BUILD_TAG" >> $GITHUB_ENV
+            fi
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ^1.22
+
+      - name: Get project dependencies
+        run: go mod download
+
+      - name: Build netstatus-api-go
+        run: |
+          mkdir -p build_assets
+          if [ $BUILD_TAG != "none" ]; then
+            go build -v -o build_assets/netstatus-api-go -trimpath -ldflags "-s -w -buildid=" -tags $BUILD_TAG
+          else
+            go build -v -o build_assets/netstatus-api-go -trimpath -ldflags "-s -w -buildid="
+          fi
+
+      - name: Prepare to release
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 60
+          retry_wait_seconds: 60
+          max_attempts: 5
+          command: |
+            cp ${GITHUB_WORKSPACE}/README.md ./build_assets/README.md
+            cp ${GITHUB_WORKSPACE}/LICENSE ./build_assets/LICENSE
+            cp ${GITHUB_WORKSPACE}/config.json.example ./build_assets/config.json
+
+      - name: Create ZIP archive
+        shell: bash
+        run: |
+          pushd build_assets || exit 1
+          touch -mt $(date +%Y01010000) *
+          zip -9vr ../netstatus-api-go-$ASSET_NAME.zip .
+          popd || exit 1
+          FILE=./netstatus-api-go-$ASSET_NAME.zip
+          DGST=$FILE.dgst
+          openssl dgst -sha256    $FILE | sed 's/([^)]*)//g' >>$DGST
+          openssl dgst -sha3-256  $FILE | sed 's/([^)]*)//g' >>$DGST
+
+      - name: Change the name
+        run: |
+          mv build_assets netstatus-api-go-$ASSET_NAME
+
+      - name: Upload files to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: netstatus-api-go-${{ steps.get_filename.outputs.ASSET_NAME }}
+          path: |
+            ./netstatus-api-go-${{ steps.get_filename.outputs.ASSET_NAME }}/*
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        if: github.event_name == 'release'
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./netstatus-api-go-${{ steps.get_filename.outputs.ASSET_NAME }}.zip*
+          tag: ${{ github.ref }}
+          file_glob: true

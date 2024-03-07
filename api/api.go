@@ -1,37 +1,17 @@
-package main
+package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/sspanel-uim/NetStatus-API-Go/config"
 	"net"
 	"net/http"
 	"time"
 )
 
-type tcpingRes struct {
-	Status  string `json:"status"`
-	Message string `json:"message"`
-}
-
-var port = "8080"
-var timeout = 1 * time.Second
-
-func main() {
-	gin.SetMode(gin.ReleaseMode)
-	r := gin.Default()
-
-	r.Group("v1").GET("/tcping", tcping)
-
-	err := r.Run(":" + port)
-
-	if err != nil {
-		return
-	}
-}
-
-func tcping(c *gin.Context) {
+func Tcping(c *gin.Context) {
 	if c.Query("ip") == "" {
-		c.JSON(http.StatusOK, tcpingRes{
-			Status:  "error",
+		c.JSON(http.StatusBadRequest, tcpingRes{
+			Status:  "false",
 			Message: "Missing ip parameter",
 		})
 
@@ -39,9 +19,9 @@ func tcping(c *gin.Context) {
 	}
 
 	if c.Query("port") == "" {
-		c.JSON(http.StatusOK, tcpingRes{
-			Status:  "error",
-			Message: "Missing ip parameter",
+		c.JSON(http.StatusBadRequest, tcpingRes{
+			Status:  "false",
+			Message: "Missing port parameter",
 		})
 
 		return
@@ -49,7 +29,6 @@ func tcping(c *gin.Context) {
 
 	status := "true"
 	msg := ""
-
 	status, msg = ping(c.Query("ip"), c.Query("port"))
 
 	c.JSON(http.StatusOK, tcpingRes{
@@ -59,8 +38,9 @@ func tcping(c *gin.Context) {
 }
 
 func ping(ip string, port string) (status string, msg string) {
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, port), timeout)
+	timeout := time.Duration(int64(config.GetTimeout()) * int64(time.Millisecond))
 
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, port), timeout)
 	if err != nil {
 		return "false", "TCP connection failed"
 	}
