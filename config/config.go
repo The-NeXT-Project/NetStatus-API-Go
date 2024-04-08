@@ -16,7 +16,7 @@ func init() {
 	Config.SetDefault("port", 8080)
 	Config.SetDefault("timeout", 1000)
 
-	err := Config.Unmarshal(&apiConfig)
+	err := Config.ReadInConfig()
 	if err != nil {
 		return
 	}
