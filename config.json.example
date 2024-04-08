@@ -1,4 +1,4 @@
 {
     "port": 8080,
-    "tcpping_timeout": 1000,
+    "timeout": 1000,
 }

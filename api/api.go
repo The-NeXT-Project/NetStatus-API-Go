@@ -38,7 +38,7 @@ func Tcping(c *gin.Context) {
 }
 
 func ping(ip string, port string) (status string, msg string) {
-	timeout := time.Duration(int64(config.GetTimeout()) * int64(time.Millisecond))
+	timeout := time.Duration(int64(config.Config.GetInt("timeout")) * int64(time.Millisecond))
 
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, port), timeout)
 	if err != nil {
