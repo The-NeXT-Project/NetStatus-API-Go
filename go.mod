@@ -1,6 +1,6 @@
-module github.com/sspanel-uim/NetStatus-API-Go
+module github.com/SSPanel-NeXT/NetStatus-API-Go
 
-go 1.22.2
+go 1.22
 
 require (
 	github.com/gin-gonic/gin v1.10.0

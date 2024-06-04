@@ -1,10 +1,10 @@
 package main
 
 import (
+	"github.com/SSPanel-NeXT/NetStatus-API-Go/api"
+	"github.com/SSPanel-NeXT/NetStatus-API-Go/config"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/pflag"
-	"github.com/sspanel-uim/NetStatus-API-Go/api"
-	"github.com/sspanel-uim/NetStatus-API-Go/config"
 	"strconv"
 )
 

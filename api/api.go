@@ -1,8 +1,8 @@
 package api
 
 import (
+	"github.com/SSPanel-NeXT/NetStatus-API-Go/config"
 	"github.com/gin-gonic/gin"
-	"github.com/sspanel-uim/NetStatus-API-Go/config"
 	"net"
 	"net/http"
 	"time"
