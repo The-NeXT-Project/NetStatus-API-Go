@@ -21,7 +21,6 @@ on:
     types: [ published ]
 
 jobs:
-
   build:
     strategy:
       matrix:
@@ -37,7 +36,6 @@ jobs:
             goos: linux
             goarch: riscv64
       fail-fast: false
-
     runs-on: ubuntu-latest
     env:
       BUILD_TAG: ${{ matrix.build-tag }}
@@ -48,7 +46,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Generate build information
         id: get_filename
         run: |
@@ -70,15 +67,12 @@ jobs:
               echo "ASSET_NAME=$GOOS-$GOARCH-$BUILD_TAG" >> $GITHUB_ENV
             fi
           fi
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: ^1.22
-
       - name: Get project dependencies
         run: go mod download
-
       - name: Build netstatus-api-go
         run: |
           mkdir build_assets
@@ -87,13 +81,11 @@ jobs:
           else
             go build -v -o build_assets/netstatus-api-go -trimpath -ldflags "-s -w -buildid="
           fi
-
       - name: Prepare config files
         run: |
           cp ${GITHUB_WORKSPACE}/README.md ./build_assets/README.md
           cp ${GITHUB_WORKSPACE}/LICENSE ./build_assets/LICENSE
           cp ${GITHUB_WORKSPACE}/config.json.example ./build_assets/config.json
-
       - name: Create zip archive
         run: |
           pushd build_assets || exit 1
@@ -105,14 +97,12 @@ jobs:
           openssl dgst -sha256    $FILE | sed 's/([^)]*)//g' >> $DGST
           openssl dgst -sha3-256  $FILE | sed 's/([^)]*)//g' >> $DGST
           mv build_assets netstatus-api-go-$ASSET_NAME
-
       - name: Upload files to artifacts
         uses: actions/upload-artifact@v4
         with:
           name: netstatus-api-go-${{ steps.get_filename.outputs.ASSET_NAME }}
           path: |
             ./netstatus-api-go-${{ steps.get_filename.outputs.ASSET_NAME }}/*
-
       - name: Upload files to release
         uses: svenstaro/upload-release-action@v2
         if: ${{ github.event_name == 'release' }}

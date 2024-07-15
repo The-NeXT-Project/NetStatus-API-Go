@@ -3,21 +3,28 @@ package config
 import "github.com/spf13/viper"
 
 var (
-	Config    = viper.New()
-	apiConfig = &ApiConfig{}
+	Viper  = viper.New()
+	Config = &ApiConfig{}
 )
 
 func init() {
-	Config.SetConfigName("Config")
-	Config.SetConfigType("json")
-	Config.AddConfigPath("/etc/netstatus-api-go/")
-	Config.AddConfigPath(".")
+	Viper.SetConfigName("config")
+	Viper.SetConfigType("json")
+	Viper.AddConfigPath("/etc/netstatus-api-go/")
+	Viper.AddConfigPath(".")
 
-	Config.SetDefault("port", 8080)
-	Config.SetDefault("timeout", 1000)
+	Viper.SetDefault("port", 8080)
+	Viper.SetDefault("api_timeout", 3000)
+	Viper.SetDefault("tcping_timeout", 1000)
+	Viper.SetDefault("rate_limit", 60)
 
-	err := Config.ReadInConfig()
+	err := Viper.ReadInConfig()
 	if err != nil {
-		return
+		panic(err)
+	}
+
+	err = Viper.Unmarshal(&Config)
+	if err != nil {
+		panic(err)
 	}
 }

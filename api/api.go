@@ -1,44 +1,63 @@
 package api
 
 import (
-	"github.com/SSPanel-NeXT/NetStatus-API-Go/config"
-	"github.com/gin-gonic/gin"
+	"encoding/json"
+	"github.com/The-NeXT-Project/NetStatus-API-Go/config"
 	"net"
 	"net/http"
 	"time"
 )
 
-func Tcping(c *gin.Context) {
-	if c.Query("ip") == "" {
-		c.JSON(http.StatusBadRequest, tcpingRes{
+func TcpingV1(writer http.ResponseWriter, request *http.Request) {
+	if request.URL.Query().Get("ip") == "" {
+		res, _ := json.Marshal(tcpingRes{
 			Status:  "false",
 			Message: "Missing ip parameter",
 		})
 
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusBadRequest)
+		_, err := writer.Write(res)
+		if err != nil {
+			writer.WriteHeader(http.StatusInternalServerError)
+		}
+
 		return
 	}
 
-	if c.Query("port") == "" {
-		c.JSON(http.StatusBadRequest, tcpingRes{
+	if request.URL.Query().Get("port") == "" {
+		res, _ := json.Marshal(tcpingRes{
 			Status:  "false",
 			Message: "Missing port parameter",
 		})
 
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusBadRequest)
+		_, err := writer.Write(res)
+		if err != nil {
+			writer.WriteHeader(http.StatusInternalServerError)
+		}
+
 		return
 	}
 
-	status := "true"
-	msg := ""
-	status, msg = ping(c.Query("ip"), c.Query("port"))
+	status, msg := ping(request.URL.Query().Get("ip"), request.URL.Query().Get("port"))
 
-	c.JSON(http.StatusOK, tcpingRes{
+	res, _ := json.Marshal(tcpingRes{
 		Status:  status,
 		Message: msg,
 	})
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	_, err := writer.Write(res)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 func ping(ip string, port string) (status string, msg string) {
-	timeout := time.Duration(int64(config.Config.GetInt("timeout")) * int64(time.Millisecond))
+	timeout := time.Duration(int64(config.Config.TcpingTimeout) * int64(time.Millisecond))
 
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, port), timeout)
 	if err != nil {

@@ -1,4 +1,6 @@
 {
     "port": 8080,
-    "timeout": 1000,
+    "api_timeout": 3000,
+    "tcping_timeout": 1000,
+    "rate_limit": 60
 }
