@@ -1,9 +1,9 @@
 module github.com/The-NeXT-Project/NetStatus-API-Go
 
-go 1.25.5
+go 1.26.2
 
 require (
-	github.com/go-chi/chi/v5 v5.2.3
+	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-chi/httprate v0.15.0
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
