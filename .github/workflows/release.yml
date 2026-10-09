@@ -1,0 +1,104 @@
+name: Test and Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/release.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/release.yml'
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race ./...
+
+  build:
+    name: build (${{ matrix.asset }})
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { asset: linux-amd64, goarch: amd64, goamd64: v1 }
+          - { asset: linux-amd64v3, goarch: amd64, goamd64: v3 }
+          - { asset: linux-arm64, goarch: arm64 }
+          - { asset: linux-riscv64, goarch: riscv64 }
+    env:
+      CGO_ENABLED: 0
+      GOOS: linux
+      GOARCH: ${{ matrix.goarch }}
+      GOAMD64: ${{ matrix.goamd64 }}
+      PKG: netstatus-api-go-${{ matrix.asset }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Build
+        run: go build -v -trimpath -ldflags "-s -w -buildid=" -o "$PKG/netstatus-api-go"
+
+      - name: Package
+        run: |
+          cp README.md LICENSE "$PKG/"
+          cp config.json.example "$PKG/config.json"
+          (cd "$PKG" && zip -9r "../$PKG.zip" .)
+          openssl dgst -sha256 "$PKG.zip" | sed 's/([^)]*)//g' >> "$PKG.zip.hash.txt"
+          openssl dgst -sha3-256 "$PKG.zip" | sed 's/([^)]*)//g' >> "$PKG.zip.hash.txt"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.PKG }}
+          path: ${{ env.PKG }}/*
+          if-no-files-found: error
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" "$PKG.zip" "$PKG.zip.hash.txt" --clobber

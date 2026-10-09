@@ -1,0 +1,10 @@
+{
+    "port": 8080,
+    "api_timeout": 3000,
+    "tcping_timeout": 1000,
+    "tcping_attempts": 1,
+    "rate_limit": 60,
+    "trust_proxy": false,
+    "allow_private": false,
+    "token": ""
+}
