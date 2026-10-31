@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG GO_VERSION=1.27.2
+ARG GO_VERSION=1.27.3
 
 # Cross-compiles on the build host, so multi-arch images don't need QEMU
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS build
